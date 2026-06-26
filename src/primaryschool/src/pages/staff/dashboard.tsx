@@ -1,0 +1,523 @@
+import React, { useState, useEffect } from "react";
+import { PageHeader } from "@/components/layout";
+import { useAuth } from "@/context/AuthContext";
+
+// shadcn/ui
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// lucide
+import { 
+  CheckCircle2, Clock, Bell, Calendar, MapPin,
+  Construction, ClipboardList, Zap, Wrench,
+  AlertTriangle, ChevronRight, Plus, Timer,
+  TrendingUp, Activity, Settings, Users,
+  PlayCircle, PauseCircle, CheckSquare,
+  AlertCircle, Briefcase, Coffee
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// ─── Enhanced Stat Card ──────────────────────────────────────────────────────
+
+function StaffStatCard({
+  label, value, subText, icon: Icon, color, trend, change, interactive = false, onClick
+}: {
+  label: string; 
+  value: string | number; 
+  subText: string; 
+  color: string;
+  icon: any; 
+  trend?: "up" | "down" | "stable";
+  change?: string;
+  interactive?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <Card 
+      className={cn(
+        "relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-primary to-indigo-700 text-white transition-all duration-300",
+        interactive && "cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+      )}
+      onClick={onClick}
+    >
+      {/* Decorative Blur */}
+      <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+      
+      <CardContent className="p-6 relative z-10">
+        <div className="flex items-center justify-between mb-4">
+          <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 shadow-inner">
+            <Icon size={20} className="text-white" />
+          </div>
+          {trend && (
+            <div className={cn(
+              "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold border border-white/20 bg-white/10 backdrop-blur-sm text-white"
+            )}>
+              <TrendingUp size={12} className={trend === "down" ? "rotate-180" : ""} />
+              {change}
+            </div>
+          )}
+        </div>
+        <p className="text-2xl font-bold tracking-tight leading-none mb-2 text-white">{value}</p>
+        <p className="text-[12px] font-bold text-white/90 mb-1 uppercase tracking-wider">{label}</p>
+        <p className="text-[10px] text-white/50 font-medium italic truncate">{subText}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Time Tracking Widget ────────────────────────────────────────────────────
+
+function TimeTracker() {
+  const [isTracking, setIsTracking] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isTracking) {
+      interval = setInterval(() => setElapsed(prev => prev + 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTracking]);
+
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <Card className="shadow-lg border-slate-200/80">
+      <CardContent className="p-4 sm:p-6">
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Timer className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            <h3 className="font-semibold text-sm sm:text-base text-foreground">Work Timer</h3>
+          </div>
+          <div className="text-2xl sm:text-3xl font-mono font-bold text-foreground tracking-wider">
+            {formatTime(elapsed)}
+          </div>
+          <Button
+            onClick={() => setIsTracking(!isTracking)}
+            className={cn(
+              "w-full h-10 sm:h-12 font-semibold transition-all duration-200 text-sm sm:text-base",
+              isTracking 
+                ? "bg-rose-500 hover:bg-rose-600 text-white" 
+                : "bg-emerald-500 hover:bg-emerald-600 text-white"
+            )}
+          >
+            {isTracking ? (
+              <>
+                <PauseCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                Stop Working
+              </>
+            ) : (
+              <>
+                <PlayCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                Start Working
+              </>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Enhanced Task Component ─────────────────────────────────────────────────
+
+function TaskCard({ task, onToggle, onUpdate }: { 
+  task: any; 
+  onToggle: () => void; 
+  onUpdate: () => void; 
+}) {
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "High": return "bg-rose-50 text-rose-700 border-rose-200";
+      case "Medium": return "bg-amber-50 text-amber-700 border-amber-200";
+      default: return "bg-slate-50 text-slate-700 border-slate-200";
+    }
+  };
+
+  return (
+    <div className={cn(
+      "group relative p-3 sm:p-4 md:p-5 rounded-xl border transition-all duration-200 bg-white shadow-sm hover:shadow-md",
+      task.done ? "opacity-70 bg-slate-50" : "hover:border-indigo-200"
+    )}>
+      <div className="flex items-start gap-2 sm:gap-3 md:gap-4">
+        <button
+          onClick={onToggle}
+          className={cn(
+            "h-5 w-5 sm:h-6 sm:w-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 mt-0.5 flex-shrink-0",
+            task.done 
+              ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" 
+              : "border-slate-300 hover:border-indigo-400 bg-white"
+          )}
+        >
+          {task.done && <CheckCircle2 size={12} className="sm:w-3.5 sm:h-3.5" />}
+        </button>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-3 mb-2">
+            <h4 className={cn(
+              "font-semibold text-xs sm:text-sm leading-snug transition-all flex-1 break-words",
+              task.done ? "text-slate-500 line-through" : "text-slate-900"
+            )}>
+              {task.title}
+            </h4>
+            <Badge className={`text-[10px] sm:text-xs font-semibold border flex-shrink-0 ${getPriorityColor(task.priority)}`}>
+              {task.priority}
+            </Badge>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-[9px] sm:text-xs text-slate-500 flex-wrap">
+            <div className="flex items-center gap-1">
+              <MapPin size={10} className="sm:w-3 sm:h-3" />
+              <span className="truncate">{task.location || "Main Building"}</span>
+            </div>
+            <div className="hidden sm:flex items-center gap-1">•</div>
+            <div className="flex items-center gap-1">
+              <Clock size={10} className="sm:w-3 sm:h-3" />
+              <span className="truncate">{task.estimatedTime || "2 hrs"}</span>
+            </div>
+            <div className="hidden sm:flex items-center gap-1">•</div>
+            <div className="flex items-center gap-1">
+              <Users size={10} className="sm:w-3 sm:h-3" />
+              <span className="truncate">{task.assignedBy || "Admin"}</span>
+            </div>
+          </div>
+          
+          {task.description && (
+            <p className="text-[9px] sm:text-xs text-slate-600 mt-1 sm:mt-2 leading-relaxed line-clamp-2">
+              {task.description}
+            </p>
+          )}
+        </div>
+      </div>
+      
+      {!task.done && (
+        <div className="flex gap-2 mt-4">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onUpdate}
+            className="h-8 text-xs border-slate-200 hover:border-indigo-300 hover:bg-indigo-50"
+          >
+            <Settings size={12} className="mr-1" />
+            Update
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Dashboard ──────────────────────────────────────────────────────────
+
+export default function StaffDashboard() {
+  const { user } = useAuth();
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update time every minute
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getGreeting = () => {
+    const hour = currentTime.getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  };
+
+  const tasks = [
+    { 
+      id: 1,
+      title: "Deep clean classrooms — Block A", 
+      done: true, 
+      priority: "High",
+      location: "Block A",
+      estimatedTime: "3 hrs",
+      assignedBy: "Head Janitor",
+      description: "Complete deep cleaning including windows, floors, and desks"
+    },
+    { 
+      id: 2,
+      title: "Monthly fire safety equipment check", 
+      done: true, 
+      priority: "High",
+      location: "All Buildings",
+      estimatedTime: "1 hr",
+      assignedBy: "Safety Officer"
+    },
+    { 
+      id: 3,
+      title: "Repair broken desk in Grade 6B classroom", 
+      done: false, 
+      priority: "High",
+      location: "Grade 6B",
+      estimatedTime: "45 mins",
+      assignedBy: "Admin",
+      description: "Fix wobbly leg and tighten all screws"
+    },
+    { 
+      id: 4,
+      title: "Repaint main school gate", 
+      done: false, 
+      priority: "Low",
+      location: "Main Entrance",
+      estimatedTime: "4 hrs",
+      assignedBy: "Maintenance Head"
+    },
+    { 
+      id: 5,
+      title: "Service air conditioning units", 
+      done: false, 
+      priority: "Medium",
+      location: "Admin Block",
+      estimatedTime: "2 hrs",
+      assignedBy: "Facilities Manager"
+    },
+  ];
+
+  const [taskList, setTaskList] = useState(tasks);
+  const completed = taskList.filter(t => t.done).length;
+  const completionRate = Math.round((completed / taskList.length) * 100);
+
+  const notices = [
+    { 
+      title: "Staff appreciation lunch this Friday", 
+      date: "Today", 
+      type: "info",
+      priority: "normal",
+      description: "Join us at 1:00 PM in the staff room for appreciation lunch"
+    },
+    { 
+      title: "Emergency drill scheduled", 
+      date: "Tomorrow", 
+      type: "warning",
+      priority: "high",
+      description: "Fire safety drill at 10:00 AM - please ensure all equipment is ready"
+    },
+    { 
+      title: "New equipment delivery expected", 
+      date: "This week", 
+      type: "info",
+      priority: "low",
+      description: "Cleaning supplies and maintenance tools arriving Wednesday"
+    },
+  ];
+
+  const recentActivity = [
+    { action: "Completed", item: "Classroom cleaning Block A", time: "2 hours ago", type: "completion" },
+    { action: "Started", item: "Fire safety inspection", time: "3 hours ago", type: "start" },
+    { action: "Updated", item: "Equipment inventory", time: "Yesterday", type: "update" },
+    { action: "Reported", item: "Broken window in Grade 5", time: "2 days ago", type: "report" },
+  ];
+
+  const toggleTask = (id: number) => {
+    setTaskList(prev => prev.map(t => 
+      t.id === id ? { ...t, done: !t.done } : t
+    ));
+  };
+
+  return (
+    <div className="space-y-8">
+      <PageHeader 
+        variant="banner"
+        title={`Hello, ${user?.name?.split(" ")[1] ?? "Staff"} 👋`} 
+        subtitle={Math.floor(currentTime.getHours() / 12) === 0 ? "Good Morning" : "Good Afternoon"} 
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Badge className="bg-white/20 text-white border-white/30 font-semibold backdrop-blur-sm">
+              <Briefcase className="mr-1 h-3 w-3" />
+              Operations Staff
+            </Badge>
+          </div>
+        }
+      />
+
+      {/* Enhanced Stats Grid */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <StaffStatCard 
+          label="Active Tasks" 
+          value={`${taskList.filter(t => !t.done).length}`}
+          subText="Pending work orders"
+          icon={ClipboardList} 
+          color="bg-indigo-50 text-indigo-600 border-indigo-200" 
+          trend="stable"
+          change="2 new today"
+          interactive={true}
+        />
+        <StaffStatCard 
+          label="Completion Rate" 
+          value={`${completionRate}%`}
+          subText="This week's progress"
+          icon={CheckCircle2} 
+          color="bg-emerald-50 text-emerald-600 border-emerald-200" 
+          trend="up"
+          change="+5%"
+        />
+        <StaffStatCard 
+          label="Attendance" 
+          value="96.5%"
+          subText="Monthly average"
+          icon={Calendar} 
+          color="bg-blue-50 text-blue-600 border-blue-200" 
+          trend="up"
+          change="+2.1%"
+        />
+        <StaffStatCard 
+          label="Notifications" 
+          value={notices.length}
+          subText="Unread updates"
+          icon={Bell} 
+          color="bg-amber-50 text-amber-600 border-amber-200" 
+          trend="stable"
+          change="1 urgent"
+          interactive={true}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:gap-8 lg:grid-cols-3">
+        {/* Enhanced Task Management */}
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+          <Card className="shadow-lg border-slate-200/80">
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-200/60 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg sm:text-xl font-bold text-foreground">Work Queue</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
+                    Your assigned tasks and maintenance work orders
+                  </CardDescription>
+                </div>
+                <Button className="bg-primary hover:bg-primary/90 shadow-sm w-full sm:w-auto text-sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Task
+                </Button>
+              </div>
+              
+              {/* Progress Overview */}
+              <div className="mt-4 sm:mt-6 space-y-3">
+                <div className="flex justify-between text-xs sm:text-sm">
+                  <span className="font-medium text-slate-700">Daily Progress</span>
+                  <span className="font-bold text-slate-900">{completed}/{taskList.length} tasks</span>
+                </div>
+                <Progress value={completionRate} className="h-3 bg-slate-100">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all duration-500"
+                    style={{ width: `${completionRate}%` }}
+                  />
+                </Progress>
+              </div>
+            </CardHeader>
+            
+            <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+              {taskList.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onToggle={() => toggleTask(task.id)}
+                  onUpdate={() => console.log('Update task', task.id)}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Enhanced Sidebar */}
+        <div className="space-y-4 sm:space-y-6">
+          {/* Time Tracker */}
+          <TimeTracker />
+
+          {/* Enhanced Notices */}
+          <Card className="shadow-lg border-slate-200/80">
+            <CardHeader className="p-4 sm:p-5 border-b border-slate-100">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base sm:text-lg font-bold text-slate-900">Staff Updates</CardTitle>
+                <Badge className="bg-rose-50 text-rose-700 border-rose-200 font-semibold text-xs">
+                  {notices.filter(n => n.priority === 'high').length} urgent
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-5 space-y-3">
+              {notices.map((notice, i) => (
+                <div key={i} className={cn(
+                  "p-3 sm:p-4 rounded-xl border transition-all duration-200 hover:shadow-sm text-sm",
+                  notice.type === "warning" 
+                    ? "bg-amber-50 border-amber-200" 
+                    : "bg-blue-50 border-blue-200"
+                )}>
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      "h-6 w-6 sm:h-8 sm:w-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                      notice.type === "warning" 
+                        ? "bg-amber-100 text-amber-600" 
+                        : "bg-blue-100 text-blue-600"
+                    )}>
+                      {notice.type === "warning" ? <AlertTriangle size={14} className="sm:w-4 sm:h-4" /> : <Bell size={14} className="sm:w-4 sm:h-4" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-semibold text-xs sm:text-sm text-slate-900 leading-tight mb-1">
+                        {notice.title}
+                      </h4>
+                      {notice.description && (
+                        <p className="text-[10px] sm:text-xs text-slate-600 leading-relaxed mb-2">
+                          {notice.description}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] sm:text-xs text-slate-500 font-medium">{notice.date}</span>
+                        {notice.priority === 'high' && (
+                          <Badge className="bg-rose-100 text-rose-700 border-rose-200 text-[9px] sm:text-xs">
+                            Urgent
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              <Button variant="ghost" className="w-full text-xs sm:text-sm font-semibold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
+                View All Updates
+                <ChevronRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Recent Activity */}
+          <Card className="shadow-lg border-slate-200/80">
+            <CardHeader className="p-4 sm:p-5 border-b border-slate-100">
+              <CardTitle className="text-base sm:text-lg font-bold text-slate-900">Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-5 space-y-2 sm:space-y-3">
+              {recentActivity.map((activity, i) => (
+                <div key={i} className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg hover:bg-slate-50 transition-colors text-sm">
+                  <div className={cn(
+                    "h-2 w-2 rounded-full flex-shrink-0",
+                    activity.type === "completion" ? "bg-emerald-500" :
+                    activity.type === "start" ? "bg-blue-500" :
+                    activity.type === "update" ? "bg-amber-500" : "bg-rose-500"
+                  )} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-slate-900">
+                      <span className="font-semibold">{activity.action}</span> {activity.item}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-slate-500">{activity.time}</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
